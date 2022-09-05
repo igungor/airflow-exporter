@@ -144,33 +144,19 @@ class DagRunScheduleInfo:
 def get_last_dagrun_start_times():
     assert(Session is not None)
 
-    dagrun_start_dates_query = (
-        Session.query(
-            DagRun.dag_id,
-            DagRun.start_date,
-            func.row_number().over(partition_by=DagRun.dag_id, order_by=DagRun.start_date.desc()).label('row_number')
-        )
-        .filter(DagRun.start_date is not None)
-        .subquery()
-    )
-
     last_dag_run_start_dates_query = (
         Session.query(
-            dagrun_start_dates_query.c.dag_id,
-            dagrun_start_dates_query.c.start_date,
+            DagRun.dag_id,
+            func.max(DagRun.start_date).label('start_date')
         )
-        .filter(dagrun_start_dates_query.c.row_number == 1)
-        .subquery()
+        .join(DagModel, DagModel.dag_id == DagRun.dag_id)
+        .join(SerializedDagModel, SerializedDagModel.dag_id == DagRun.dag_id)
+        .filter(DagRun.start_date is not None)
+        .group_by(DagRun.dag_id)
     )
 
     sql_res = (
-        Session.query(
-            last_dag_run_start_dates_query.c.dag_id,
-            last_dag_run_start_dates_query.c.start_date,
-        )
-        .join(DagModel, DagModel.dag_id == last_dag_run_start_dates_query.c.dag_id)
-        .join(SerializedDagModel, SerializedDagModel.dag_id == last_dag_run_start_dates_query.c.dag_id)
-        .all()
+        last_dag_run_start_dates_query.all()
     )
 
     return [
