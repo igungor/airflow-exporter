@@ -155,10 +155,7 @@ def get_last_dagrun_start_times():
         .group_by(DagRun.dag_id)
     )
 
-    sql_res = (
-        last_dag_run_start_dates_query.all()
-    )
-
+    sql_res = last_dag_run_start_dates_query.all()
     return [
         DagRunScheduleInfo(
             dag_id=row.dag_id,
